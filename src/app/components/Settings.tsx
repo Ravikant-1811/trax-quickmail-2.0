@@ -20,6 +20,14 @@ export function Settings() {
     timezone: 'Asia/Kolkata',
     language: 'English',
   });
+  const [smtp, setSmtp] = useState({
+    host: '',
+    port: 587,
+    user: '',
+    pass: '',
+    fromName: 'TraxQuickMail',
+    replyTo: '',
+  });
 
   const loadSettings = async () => {
     const data = (await api.settings()) as any;
@@ -29,6 +37,14 @@ export function Settings() {
       email: data.account?.email || '',
       timezone: data.account?.timezone || 'Asia/Kolkata',
       language: data.account?.language || 'English',
+    });
+    setSmtp({
+      host: data.smtp?.host || '',
+      port: data.smtp?.port || 587,
+      user: data.smtp?.user || '',
+      pass: data.smtp?.pass || '',
+      fromName: data.smtp?.fromName || 'TraxQuickMail',
+      replyTo: data.smtp?.replyTo || data.account?.email || '',
     });
   };
 
@@ -123,7 +139,7 @@ export function Settings() {
                   </div>
                   <button
                     onClick={async () => {
-                      await api.updateSettings({ account });
+                      await api.updateSettings({ account, smtp });
                       await loadSettings();
                     }}
                     className="px-6 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg transition-colors"
@@ -210,6 +226,99 @@ export function Settings() {
                 <button className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg transition-colors">
                   Generate New Key
                 </button>
+              </div>
+
+              <div>
+                <h2 className="font-[var(--font-display)] text-xl text-white mb-4">SMTP Settings</h2>
+                <div className="space-y-4 p-4 bg-secondary/30 border border-border rounded-lg">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-muted-foreground mb-2">SMTP Host</label>
+                      <input
+                        type="text"
+                        value={smtp.host}
+                        onChange={(e) => setSmtp((prev) => ({ ...prev, host: e.target.value }))}
+                        className="w-full px-4 py-2.5 bg-card border border-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                        placeholder="smtp.gmail.com"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-muted-foreground mb-2">SMTP Port</label>
+                      <input
+                        type="number"
+                        value={smtp.port}
+                        onChange={(e) => setSmtp((prev) => ({ ...prev, port: Number(e.target.value) }))}
+                        className="w-full px-4 py-2.5 bg-card border border-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                        placeholder="587"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-muted-foreground mb-2">SMTP Username</label>
+                      <input
+                        type="text"
+                        value={smtp.user}
+                        onChange={(e) => setSmtp((prev) => ({ ...prev, user: e.target.value }))}
+                        className="w-full px-4 py-2.5 bg-card border border-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                        placeholder="your@email.com"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-muted-foreground mb-2">SMTP Password</label>
+                      <input
+                        type="password"
+                        value={smtp.pass}
+                        onChange={(e) => setSmtp((prev) => ({ ...prev, pass: e.target.value }))}
+                        className="w-full px-4 py-2.5 bg-card border border-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                        placeholder="App password or SMTP key"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-muted-foreground mb-2">From Name</label>
+                      <input
+                        type="text"
+                        value={smtp.fromName}
+                        onChange={(e) => setSmtp((prev) => ({ ...prev, fromName: e.target.value }))}
+                        className="w-full px-4 py-2.5 bg-card border border-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                        placeholder="TraxQuickMail"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-muted-foreground mb-2">Reply-To</label>
+                      <input
+                        type="email"
+                        value={smtp.replyTo}
+                        onChange={(e) => setSmtp((prev) => ({ ...prev, replyTo: e.target.value }))}
+                        className="w-full px-4 py-2.5 bg-card border border-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                        placeholder="reply-to@email.com"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={async () => {
+                        await api.updateSettings({ smtp, account });
+                        await loadSettings();
+                      }}
+                      className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg transition-colors"
+                    >
+                      Save SMTP
+                    </button>
+                    <button
+                      onClick={async () => {
+                        await api.updateSettings({ smtp, account });
+                        await api.testSmtp();
+                        await loadSettings();
+                      }}
+                      className="px-4 py-2 bg-card border border-border rounded-lg text-white hover:bg-secondary transition-colors"
+                    >
+                      Test SMTP
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <div>

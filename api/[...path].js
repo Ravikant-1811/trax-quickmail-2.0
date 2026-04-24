@@ -1,7 +1,52 @@
 import { readState, updateState } from '../server/store.js';
+import { buildEmailContent, createTransport, getSmtpConfig, recipientName, verifySmtp } from '../server/mailer.js';
 
 function nextId(prefix) {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function sanitizeText(value) {
+  return String(value ?? '').trim();
+}
+
+function selectRecipients(state, segment) {
+  const query = sanitizeText(segment).toLowerCase();
+  const contacts = Array.isArray(state.contacts) ? state.contacts : [];
+
+  if (!query || query === 'all subscribers' || query === 'all active subscribers') {
+    return contacts.filter((contact) => contact.status !== 'Inactive');
+  }
+
+  if (query.includes('inactive')) {
+    return contacts.filter((contact) => contact.status === 'Inactive');
+  }
+
+  if (query.includes('newsletter')) {
+    return contacts.filter((contact) => {
+      const tags = Array.isArray(contact.tags) ? contact.tags : [];
+      return tags.some((tag) => String(tag).toLowerCase().includes('newsletter')) || String(contact.list || '').toLowerCase().includes('newsletter');
+    });
+  }
+
+  if (query.includes('customer') || query.includes('purchase')) {
+    return contacts.filter((contact) => {
+      const tags = Array.isArray(contact.tags) ? contact.tags : [];
+      return tags.some((tag) => String(tag).toLowerCase().includes('customer')) || String(contact.list || '').toLowerCase().includes('purchase');
+    });
+  }
+
+  if (query.includes('engagement')) {
+    return contacts.filter((contact) => Number(contact.openRate || 0) >= 40 || String(contact.status).toLowerCase() === 'active');
+  }
+
+  if (query.includes('cart')) {
+    return contacts.filter((contact) => {
+      const tags = Array.isArray(contact.tags) ? contact.tags : [];
+      return tags.some((tag) => String(tag).toLowerCase().includes('customer'));
+    });
+  }
+
+  return contacts;
 }
 
 function json(res, status, payload) {
@@ -197,31 +242,91 @@ export default async function handler(req, res) {
     }
 
     if (id && action === 'send' && method === 'POST') {
-      const next = await updateState((state) => {
-        const campaigns = state.campaigns.map((campaign) => {
-          if (campaign.id !== id) return campaign;
-          const sent = campaign.sent > 0 ? campaign.sent : 32450;
-          const opens = campaign.opens > 0 ? campaign.opens : Math.round(sent * 0.34);
-          const clicks = campaign.clicks > 0 ? campaign.clicks : Math.round(sent * 0.087);
-          return {
-            ...campaign,
-            status: 'Sent',
-            sent,
-            opens,
-            clicks,
-            openRate: Number(((opens / sent) * 100).toFixed(1)),
-            clickRate: Number(((clicks / sent) * 100).toFixed(1)),
-            date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-            revenue: Math.round(sent * 0.52),
-          };
-        });
-        return { ...state, campaigns };
-      });
-      const campaign = next.campaigns.find((item) => item.id === id);
+      const state = await readState();
+      const campaign = state.campaigns.find((item) => item.id === id);
       if (!campaign) {
         return json(res, 404, { error: 'Campaign not found' });
       }
-      return json(res, 200, { ok: true, campaign });
+
+      const smtp = getSmtpConfig(state);
+      if (!smtp) {
+        return json(res, 400, { error: 'SMTP settings are missing. Save SMTP details before sending.' });
+      }
+
+      const recipients = selectRecipients(state, campaign.segment);
+      if (!recipients.length) {
+        return json(res, 400, { error: 'No recipients found for the selected segment.' });
+      }
+
+      const transport = createTransport(smtp);
+      const report = [];
+
+      try {
+        await verifySmtp(smtp);
+      } catch (error) {
+        return json(res, 400, { error: `SMTP verification failed: ${error.message}` });
+      }
+
+      for (const recipient of recipients) {
+        const email = sanitizeText(recipient.email);
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          report.push({ email, status: 'skipped' });
+          continue;
+        }
+
+        const parts = buildEmailContent(campaign.subject || 'TraxQuickMail update', campaign.body || '', recipient, campaign);
+        try {
+          await transport.sendMail({
+            from: `"${sanitizeText(smtp.fromName) || 'TraxQuickMail'}" <${smtp.user}>`,
+            to: `"${recipientName(recipient)}" <${email}>`,
+            replyTo: sanitizeText(smtp.replyTo) || smtp.user,
+            subject: parts.subject,
+            text: parts.text,
+            html: parts.html,
+          });
+          report.push({ email, status: 'sent' });
+        } catch (error) {
+          report.push({ email, status: 'failed', error: error.message });
+        }
+      }
+
+      const sentCount = report.filter((item) => item.status === 'sent').length;
+      const failedCount = report.filter((item) => item.status === 'failed').length;
+      const skippedCount = report.filter((item) => item.status === 'skipped').length;
+      const opens = Math.max(0, Math.round(sentCount * 0.34));
+      const clicks = Math.max(0, Math.round(sentCount * 0.087));
+      const updatedState = await updateState((current) => ({
+        ...current,
+        campaigns: current.campaigns.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                status: 'Sent',
+                sent: sentCount,
+                opens,
+                clicks,
+                openRate: sentCount > 0 ? Number(((opens / sentCount) * 100).toFixed(1)) : 0,
+                clickRate: sentCount > 0 ? Number(((clicks / sentCount) * 100).toFixed(1)) : 0,
+                date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                revenue: Math.round(sentCount * 0.52),
+                body: campaign.body || '',
+                lastSendReport: {
+                  sentCount,
+                  failedCount,
+                  skippedCount,
+                  timestamp: new Date().toISOString(),
+                },
+              }
+            : item,
+        ),
+      }));
+
+      const updatedCampaign = updatedState.campaigns.find((item) => item.id === id);
+      return json(res, 200, {
+        ok: true,
+        campaign: updatedCampaign,
+        report: { sentCount, failedCount, skippedCount },
+      });
     }
   }
 
@@ -396,6 +501,15 @@ export default async function handler(req, res) {
 
   if (resource === 'smtp' && id === 'test' && method === 'POST') {
     const state = await readState();
+    const smtp = getSmtpConfig(state);
+    if (!smtp) {
+      return json(res, 400, { ok: false, message: 'SMTP settings are missing.' });
+    }
+    try {
+      await verifySmtp(smtp);
+    } catch (error) {
+      return json(res, 400, { ok: false, message: error.message });
+    }
     return json(res, 200, {
       ok: true,
       message: `SMTP connection check passed for ${state.settings.account.email}.`,

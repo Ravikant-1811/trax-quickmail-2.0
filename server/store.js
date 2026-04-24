@@ -1,40 +1,122 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { Pool } from 'pg';
 import { initialState } from './seed.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const dataDir = process.env.VERCEL ? '/tmp/traxquickmail-data' : path.join(__dirname, 'data');
-const dataFile = path.join(dataDir, 'state.json');
+const localDataDir = path.join(__dirname, 'data');
+const localDataFile = path.join(localDataDir, 'state.json');
+const useDatabase = Boolean(process.env.DATABASE_URL);
 
-let stateCache = null;
+let localStateCache = null;
+let pool = null;
+let dbReady = false;
 
-async function ensureStore() {
-  await fs.mkdir(dataDir, { recursive: true });
-  try {
-    await fs.access(dataFile);
-  } catch {
-    await fs.writeFile(dataFile, JSON.stringify(initialState, null, 2), 'utf8');
+function getPool() {
+  if (!useDatabase) {
+    return null;
   }
+
+  if (!pool) {
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.DATABASE_SSL === 'false' ? false : { rejectUnauthorized: false },
+      max: 1,
+    });
+  }
+
+  return pool;
+}
+
+async function ensureLocalStore() {
+  await fs.mkdir(localDataDir, { recursive: true });
+  try {
+    await fs.access(localDataFile);
+  } catch {
+    await fs.writeFile(localDataFile, JSON.stringify(initialState, null, 2), 'utf8');
+  }
+}
+
+async function initDatabase() {
+  const db = getPool();
+  if (!db || dbReady) {
+    return;
+  }
+
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS traxquickmail_state (
+      id TEXT PRIMARY KEY,
+      payload JSONB NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  const result = await db.query('SELECT payload FROM traxquickmail_state WHERE id = $1 LIMIT 1', ['default']);
+  if (result.rowCount === 0) {
+    await db.query(
+      'INSERT INTO traxquickmail_state (id, payload) VALUES ($1, $2)',
+      ['default', initialState],
+    );
+  }
+
+  dbReady = true;
+}
+
+async function readDatabaseState() {
+  const db = getPool();
+  await initDatabase();
+  const result = await db.query('SELECT payload FROM traxquickmail_state WHERE id = $1 LIMIT 1', ['default']);
+  if (result.rowCount === 0) {
+    return structuredClone(initialState);
+  }
+
+  return structuredClone(result.rows[0].payload);
+}
+
+async function writeDatabaseState(nextState) {
+  const db = getPool();
+  await initDatabase();
+  await db.query(
+    'UPDATE traxquickmail_state SET payload = $2, updated_at = NOW() WHERE id = $1',
+    ['default', nextState],
+  );
+  return structuredClone(nextState);
+}
+
+async function readLocalState() {
+  if (localStateCache) {
+    return structuredClone(localStateCache);
+  }
+
+  await ensureLocalStore();
+  const raw = await fs.readFile(localDataFile, 'utf8');
+  localStateCache = JSON.parse(raw);
+  return structuredClone(localStateCache);
+}
+
+async function writeLocalState(nextState) {
+  await ensureLocalStore();
+  localStateCache = structuredClone(nextState);
+  await fs.writeFile(localDataFile, JSON.stringify(localStateCache, null, 2), 'utf8');
+  return structuredClone(localStateCache);
 }
 
 export async function readState() {
-  if (stateCache) {
-    return structuredClone(stateCache);
+  if (useDatabase) {
+    return readDatabaseState();
   }
 
-  await ensureStore();
-  const raw = await fs.readFile(dataFile, 'utf8');
-  stateCache = JSON.parse(raw);
-  return structuredClone(stateCache);
+  return readLocalState();
 }
 
 export async function writeState(nextState) {
-  await ensureStore();
-  stateCache = structuredClone(nextState);
-  await fs.writeFile(dataFile, JSON.stringify(stateCache, null, 2), 'utf8');
-  return structuredClone(stateCache);
+  if (useDatabase) {
+    return writeDatabaseState(nextState);
+  }
+
+  return writeLocalState(nextState);
 }
 
 export async function updateState(mutator) {
@@ -47,6 +129,6 @@ export async function updateState(mutator) {
   return writeState(next);
 }
 
-export function getDataFilePath() {
-  return dataFile;
+export function usingDatabase() {
+  return useDatabase;
 }
