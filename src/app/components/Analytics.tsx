@@ -19,6 +19,7 @@ import { api } from '@/lib/api';
 
 export function Analytics() {
   const [analytics, setAnalytics] = useState<any>(null);
+  const deviceData = analytics?.deviceData || [];
 
   useEffect(() => {
     api.analytics()
@@ -140,7 +141,7 @@ export function Analytics() {
                   paddingAngle={5}
                   dataKey="value"
                 >
-                  {(analytics?.deviceData || []).map((entry: any, index: number) => (
+                  {deviceData.map((entry: any, index: number) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
@@ -156,7 +157,7 @@ export function Analytics() {
             </ResponsiveContainer>
           </div>
           <div className="space-y-3 mt-4">
-            {(analytics?.deviceData || []).map((device: any) => (
+            {deviceData.map((device: any) => (
               <div key={device.name} className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full" style={{ backgroundColor: device.color }} />

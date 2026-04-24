@@ -8,12 +8,28 @@ export function Templates() {
   const [activeCategory, setActiveCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [templates, setTemplates] = useState<Array<any>>([]);
+  const [isCreating, setIsCreating] = useState(false);
 
   useEffect(() => {
     api.templates()
       .then((data) => setTemplates(data as Array<any>))
       .catch(() => setTemplates([]));
   }, []);
+
+  const handleCreateTemplate = async () => {
+    setIsCreating(true);
+    try {
+      await api.createTemplate({
+        name: `New Template ${new Date().toLocaleDateString()}`,
+        category: activeCategory === 'All' ? 'Newsletter' : activeCategory,
+        preview: 'A reusable email layout',
+      });
+      const data = await api.templates();
+      setTemplates(data as Array<any>);
+    } finally {
+      setIsCreating(false);
+    }
+  };
 
   const filteredTemplates = useMemo(() => templates.filter((template) => {
     const matchesCategory = activeCategory === 'All' || template.category === activeCategory;
@@ -28,9 +44,13 @@ export function Templates() {
           <h1 className="font-[var(--font-display)] text-3xl text-white mb-1">Template Library</h1>
           <p className="text-muted-foreground">Choose from pre-built email templates</p>
         </div>
-        <button className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 rounded-lg flex items-center gap-2 transition-all hover:scale-105">
+        <button
+          onClick={handleCreateTemplate}
+          className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 rounded-lg flex items-center gap-2 transition-all hover:scale-105"
+          disabled={isCreating}
+        >
           <Plus className="w-5 h-5" />
-          <span>Create Template</span>
+          <span>{isCreating ? 'Creating...' : 'Create Template'}</span>
         </button>
       </div>
 

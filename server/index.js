@@ -367,6 +367,30 @@ apiRouter.get('/templates', async (_req, res) => {
   send(res, state.templates);
 });
 
+apiRouter.post('/templates', async (req, res) => {
+  const body = req.body ?? {};
+  const next = await updateState((state) => {
+    const template = {
+      id: nextId('tpl'),
+      name: String(body.name || 'New Template'),
+      category: String(body.category || 'Newsletter'),
+      preview: String(body.preview || 'A reusable email layout'),
+      thumbnail: String(body.thumbnail || 'linear-gradient(135deg, #00D4AA 0%, #8B5CF6 100%)'),
+    };
+    return { ...state, templates: [template, ...state.templates] };
+  });
+  send(res, next.templates[0]);
+});
+
+apiRouter.delete('/templates/:id', async (req, res) => {
+  const { id } = req.params;
+  const next = await updateState((state) => ({
+    ...state,
+    templates: state.templates.filter((template) => template.id !== id),
+  }));
+  send(res, { ok: true, count: next.templates.length });
+});
+
 apiRouter.get('/automations', async (_req, res) => {
   const state = await readState();
   send(res, state.automations);

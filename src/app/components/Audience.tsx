@@ -13,6 +13,7 @@ export function Audience() {
   const [selected, setSelected] = useState<string[]>([]);
   const [contacts, setContacts] = useState<Array<any>>([]);
   const [query, setQuery] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
 
   const loadContacts = async () => {
     const data = await api.contacts(query);
@@ -22,6 +23,24 @@ export function Audience() {
   useEffect(() => {
     loadContacts().catch(() => setContacts([]));
   }, [query]);
+
+  const handleCreateContact = async () => {
+    setIsCreating(true);
+    try {
+      await api.createContact({
+        name: `New Contact ${new Date().toLocaleDateString()}`,
+        email: `new.contact.${Date.now()}@example.com`,
+        tags: ['New'],
+        list: 'All Subscribers',
+        status: 'Active',
+        openRate: 0,
+        lastActivity: 'Just now',
+      });
+      await loadContacts();
+    } finally {
+      setIsCreating(false);
+    }
+  };
 
   const toggleSelect = (id: string) => {
     setSelected((prev) =>
@@ -43,9 +62,13 @@ export function Audience() {
             <Download className="w-5 h-5" />
             <span>Export</span>
           </button>
-          <button className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 rounded-lg flex items-center gap-2 transition-all hover:scale-105">
+          <button
+            onClick={handleCreateContact}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 rounded-lg flex items-center gap-2 transition-all hover:scale-105"
+            disabled={isCreating}
+          >
             <Plus className="w-5 h-5" />
-            <span>Add Contact</span>
+            <span>{isCreating ? 'Adding...' : 'Add Contact'}</span>
           </button>
         </div>
       </div>
@@ -58,7 +81,7 @@ export function Audience() {
             </div>
             <div className="text-sm text-muted-foreground">Total Contacts</div>
           </div>
-          <div className="text-2xl font-[var(--font-display)] text-white">54,300</div>
+          <div className="text-2xl font-[var(--font-display)] text-white">{contacts.length.toLocaleString()}</div>
         </div>
 
         <div className="bg-card border border-border rounded-xl p-5">
@@ -68,7 +91,9 @@ export function Audience() {
             </div>
             <div className="text-sm text-muted-foreground">Active</div>
           </div>
-          <div className="text-2xl font-[var(--font-display)] text-white">48,230</div>
+          <div className="text-2xl font-[var(--font-display)] text-white">
+            {contacts.filter((contact) => contact.status === 'Active').length.toLocaleString()}
+          </div>
         </div>
 
         <div className="bg-card border border-border rounded-xl p-5">
@@ -78,7 +103,9 @@ export function Audience() {
             </div>
             <div className="text-sm text-muted-foreground">Segments</div>
           </div>
-          <div className="text-2xl font-[var(--font-display)] text-white">24</div>
+          <div className="text-2xl font-[var(--font-display)] text-white">
+            {new Set(contacts.flatMap((contact) => [contact.list, ...(contact.tags || [])])).size.toLocaleString()}
+          </div>
         </div>
 
         <div className="bg-card border border-border rounded-xl p-5">
@@ -88,7 +115,9 @@ export function Audience() {
             </div>
             <div className="text-sm text-muted-foreground">Lists</div>
           </div>
-          <div className="text-2xl font-[var(--font-display)] text-white">8</div>
+          <div className="text-2xl font-[var(--font-display)] text-white">
+            {new Set(contacts.map((contact) => contact.list)).size.toLocaleString()}
+          </div>
         </div>
       </div>
 

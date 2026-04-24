@@ -75,6 +75,13 @@ export const api = {
     method: 'DELETE',
   }),
   templates: () => request<Array<Record<string, unknown>>>('/api/templates'),
+  createTemplate: (payload: Record<string, unknown>) => request<Record<string, unknown>>('/api/templates', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  }),
+  deleteTemplate: (id: string) => request<Record<string, unknown>>(`/api/templates/${id}`, {
+    method: 'DELETE',
+  }),
   automations: () => request<Array<Record<string, unknown>>>('/api/automations'),
   createAutomation: (payload: Record<string, unknown>) => request<Record<string, unknown>>('/api/automations', {
     method: 'POST',

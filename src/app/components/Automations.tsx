@@ -5,6 +5,7 @@ import { api } from '@/lib/api';
 export function Automations() {
   const [automations, setAutomations] = useState<Array<any>>([]);
   const [templates, setTemplates] = useState<Array<any>>([]);
+  const [isCreating, setIsCreating] = useState(false);
 
   const load = async () => {
     const [automationData, templateData] = await Promise.all([api.automations(), api.templates()]);
@@ -19,6 +20,21 @@ export function Automations() {
     });
   }, []);
 
+  const handleCreateAutomation = async () => {
+    setIsCreating(true);
+    try {
+      await api.createAutomation({
+        name: `New Automation ${new Date().toLocaleDateString()}`,
+        trigger: 'Subscribed to list',
+        status: 'Paused',
+        nodes: 3,
+      });
+      await load();
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   return (
     <div className="p-8 space-y-6">
       <div className="flex items-center justify-between">
@@ -26,9 +42,13 @@ export function Automations() {
           <h1 className="font-[var(--font-display)] text-3xl text-white mb-1">Automations</h1>
           <p className="text-muted-foreground">Build automated email workflows</p>
         </div>
-        <button className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 rounded-lg flex items-center gap-2 transition-all hover:scale-105">
+        <button
+          onClick={handleCreateAutomation}
+          className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 rounded-lg flex items-center gap-2 transition-all hover:scale-105"
+          disabled={isCreating}
+        >
           <Plus className="w-5 h-5" />
-          <span>New Automation</span>
+          <span>{isCreating ? 'Creating...' : 'New Automation'}</span>
         </button>
       </div>
 

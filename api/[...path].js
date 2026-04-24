@@ -386,6 +386,28 @@ export default async function handler(req, res) {
     return json(res, 200, state.templates);
   }
 
+  if (resource === 'templates' && method === 'POST') {
+    const next = await updateState((state) => {
+      const template = {
+        id: nextId('tpl'),
+        name: String(body.name || 'New Template'),
+        category: String(body.category || 'Newsletter'),
+        preview: String(body.preview || 'A reusable email layout'),
+        thumbnail: String(body.thumbnail || 'linear-gradient(135deg, #00D4AA 0%, #8B5CF6 100%)'),
+      };
+      return { ...state, templates: [template, ...state.templates] };
+    });
+    return json(res, 201, next.templates[0]);
+  }
+
+  if (resource === 'templates' && id && method === 'DELETE') {
+    const next = await updateState((state) => ({
+      ...state,
+      templates: state.templates.filter((template) => template.id !== id),
+    }));
+    return json(res, 200, { ok: true, count: next.templates.length });
+  }
+
   if (resource === 'automations') {
     if (method === 'GET' && !id) {
       const state = await readState();
