@@ -1,68 +1,6 @@
 import { Plus, Search, Filter, Download, Tag, List, UserPlus } from 'lucide-react';
-import { useState } from 'react';
-
-const contacts = [
-  {
-    id: '1',
-    name: 'Sarah Johnson',
-    email: 'sarah.johnson@example.com',
-    tags: ['VIP', 'Newsletter'],
-    list: 'All Subscribers',
-    lastActivity: '2 hours ago',
-    openRate: 45.2,
-    status: 'Active',
-  },
-  {
-    id: '2',
-    name: 'Michael Chen',
-    email: 'michael.chen@example.com',
-    tags: ['Customer'],
-    list: 'Purchasers',
-    lastActivity: '1 day ago',
-    openRate: 62.1,
-    status: 'Active',
-  },
-  {
-    id: '3',
-    name: 'Emma Williams',
-    email: 'emma.w@example.com',
-    tags: ['Newsletter', 'Engaged'],
-    list: 'All Subscribers',
-    lastActivity: '3 days ago',
-    openRate: 38.7,
-    status: 'Active',
-  },
-  {
-    id: '4',
-    name: 'James Rodriguez',
-    email: 'james.r@example.com',
-    tags: ['VIP', 'Customer'],
-    list: 'Purchasers',
-    lastActivity: '5 hours ago',
-    openRate: 71.3,
-    status: 'Active',
-  },
-  {
-    id: '5',
-    name: 'Lisa Anderson',
-    email: 'lisa.anderson@example.com',
-    tags: ['Newsletter'],
-    list: 'All Subscribers',
-    lastActivity: '2 weeks ago',
-    openRate: 12.4,
-    status: 'Inactive',
-  },
-  {
-    id: '6',
-    name: 'David Kim',
-    email: 'david.kim@example.com',
-    tags: ['Customer', 'Engaged'],
-    list: 'Purchasers',
-    lastActivity: '1 hour ago',
-    openRate: 58.9,
-    status: 'Active',
-  },
-];
+import { useEffect, useMemo, useState } from 'react';
+import { api } from '@/lib/api';
 
 const tagColors = [
   'bg-[#00D4AA]/10 text-[#00D4AA] border-[#00D4AA]/20',
@@ -73,12 +11,25 @@ const tagColors = [
 
 export function Audience() {
   const [selected, setSelected] = useState<string[]>([]);
+  const [contacts, setContacts] = useState<Array<any>>([]);
+  const [query, setQuery] = useState('');
+
+  const loadContacts = async () => {
+    const data = await api.contacts(query);
+    setContacts(data as Array<any>);
+  };
+
+  useEffect(() => {
+    loadContacts().catch(() => setContacts([]));
+  }, [query]);
 
   const toggleSelect = (id: string) => {
     setSelected((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
   };
+
+  const filteredContacts = useMemo(() => contacts, [contacts]);
 
   return (
     <div className="p-8 space-y-6">
@@ -147,6 +98,8 @@ export function Audience() {
           <input
             type="text"
             placeholder="Search contacts..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 bg-card border border-border rounded-lg text-white placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
@@ -191,7 +144,7 @@ export function Audience() {
               </tr>
             </thead>
             <tbody>
-              {contacts.map((contact, index) => (
+              {filteredContacts.map((contact, index) => (
                 <tr
                   key={contact.id}
                   className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer"

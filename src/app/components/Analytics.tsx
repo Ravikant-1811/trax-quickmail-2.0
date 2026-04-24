@@ -1,4 +1,5 @@
 import { Download, TrendingUp, TrendingDown } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import {
   BarChart,
   Bar,
@@ -14,29 +15,17 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
-
-const performanceData = [
-  { month: 'Jan', opens: 28000, clicks: 8400, conversions: 1680 },
-  { month: 'Feb', opens: 32000, clicks: 9600, conversions: 1920 },
-  { month: 'Mar', opens: 35000, clicks: 10500, conversions: 2100 },
-  { month: 'Apr', opens: 38000, clicks: 11400, conversions: 2280 },
-];
-
-const deviceData = [
-  { name: 'Desktop', value: 45, color: '#00D4AA' },
-  { name: 'Mobile', value: 42, color: '#8B5CF6' },
-  { name: 'Tablet', value: 13, color: '#F5A623' },
-];
-
-const topCampaigns = [
-  { name: 'Spring Product Launch', sent: 45230, opens: 17288, clicks: 4116, openRate: 38.2, clickRate: 9.1 },
-  { name: 'Customer Feedback Survey', sent: 18450, opens: 7841, clicks: 2823, openRate: 42.5, clickRate: 15.3 },
-  { name: 'Abandoned Cart Recovery', sent: 8945, opens: 3758, clicks: 1431, openRate: 42.0, clickRate: 16.0 },
-  { name: 'Weekly Newsletter #245', sent: 32100, opens: 11214, clicks: 2889, openRate: 34.9, clickRate: 9.0 },
-  { name: 'Flash Sale Alert', sent: 12100, opens: 3473, clicks: 750, openRate: 28.7, clickRate: 6.2 },
-];
+import { api } from '@/lib/api';
 
 export function Analytics() {
+  const [analytics, setAnalytics] = useState<any>(null);
+
+  useEffect(() => {
+    api.analytics()
+      .then((data) => setAnalytics(data))
+      .catch(() => setAnalytics(null));
+  }, []);
+
   return (
     <div className="p-8 space-y-6">
       <div className="flex items-center justify-between">
@@ -59,7 +48,9 @@ export function Analytics() {
               <span>+12.5%</span>
             </div>
           </div>
-          <div className="text-2xl font-[var(--font-display)] text-white mb-1">248,543</div>
+          <div className="text-2xl font-[var(--font-display)] text-white mb-1">
+            {analytics?.summary?.sent?.toLocaleString?.() || '0'}
+          </div>
           <div className="text-xs text-muted-foreground">vs last period</div>
         </div>
 
@@ -71,7 +62,9 @@ export function Analytics() {
               <span>+11.8%</span>
             </div>
           </div>
-          <div className="text-2xl font-[var(--font-display)] text-white mb-1">245,892</div>
+          <div className="text-2xl font-[var(--font-display)] text-white mb-1">
+            {analytics?.summary?.deliveries?.toLocaleString?.() || '0'}
+          </div>
           <div className="text-xs text-muted-foreground">98.9% delivery rate</div>
         </div>
 
@@ -83,7 +76,9 @@ export function Analytics() {
               <span>+8.2%</span>
             </div>
           </div>
-          <div className="text-2xl font-[var(--font-display)] text-white mb-1">84,096</div>
+          <div className="text-2xl font-[var(--font-display)] text-white mb-1">
+            {analytics?.summary?.opens?.toLocaleString?.() || '0'}
+          </div>
           <div className="text-xs text-muted-foreground">34.2% open rate</div>
         </div>
 
@@ -95,7 +90,9 @@ export function Analytics() {
               <span>-1.4%</span>
             </div>
           </div>
-          <div className="text-2xl font-[var(--font-display)] text-white mb-1">21,623</div>
+          <div className="text-2xl font-[var(--font-display)] text-white mb-1">
+            {analytics?.summary?.clicks?.toLocaleString?.() || '0'}
+          </div>
           <div className="text-xs text-muted-foreground">8.7% click rate</div>
         </div>
       </div>
@@ -105,7 +102,7 @@ export function Analytics() {
           <h2 className="font-[var(--font-display)] text-lg text-white mb-6">Performance Overview</h2>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={performanceData}>
+              <BarChart data={analytics?.performanceData || []}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.05)" />
                 <XAxis dataKey="month" stroke="#9CA3AF" tick={{ fill: '#9CA3AF', fontSize: 12 }} />
                 <YAxis stroke="#9CA3AF" tick={{ fill: '#9CA3AF', fontSize: 12 }} />
@@ -143,7 +140,7 @@ export function Analytics() {
                   paddingAngle={5}
                   dataKey="value"
                 >
-                  {deviceData.map((entry, index) => (
+                  {(analytics?.deviceData || []).map((entry: any, index: number) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
@@ -159,7 +156,7 @@ export function Analytics() {
             </ResponsiveContainer>
           </div>
           <div className="space-y-3 mt-4">
-            {deviceData.map((device) => (
+            {(analytics?.deviceData || []).map((device: any) => (
               <div key={device.name} className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full" style={{ backgroundColor: device.color }} />
@@ -187,7 +184,7 @@ export function Analytics() {
               </tr>
             </thead>
             <tbody>
-              {topCampaigns.map((campaign, index) => (
+              {(analytics?.topCampaigns || []).map((campaign: any, index: number) => (
                 <tr key={index} className="border-b border-border last:border-0">
                   <td className="py-4 text-sm text-white">{campaign.name}</td>
                   <td className="py-4 text-sm text-right text-muted-foreground">

@@ -1,5 +1,6 @@
 import { User, Globe, Key, Users, CreditCard, Bell, CheckCircle, XCircle } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { api } from '@/lib/api';
 
 const tabs = [
   { id: 'account', label: 'Account', icon: User },
@@ -10,22 +11,36 @@ const tabs = [
   { id: 'notifications', label: 'Notifications', icon: Bell },
 ];
 
-const integrations = [
-  { name: 'Zapier', description: 'Connect with 5,000+ apps', status: 'Connected', logo: 'bg-[#FF4A00]' },
-  { name: 'Shopify', description: 'Sync your store data', status: 'Not Connected', logo: 'bg-[#96BF48]' },
-  { name: 'WordPress', description: 'Embed signup forms', status: 'Not Connected', logo: 'bg-[#21759B]' },
-  { name: 'HubSpot', description: 'CRM integration', status: 'Connected', logo: 'bg-[#FF7A59]' },
-  { name: 'Slack', description: 'Get campaign notifications', status: 'Connected', logo: 'bg-[#4A154B]' },
-];
-
-const teamMembers = [
-  { name: 'Sarah Johnson', email: 'sarah@company.com', role: 'Admin', status: 'Active' },
-  { name: 'Michael Chen', email: 'michael@company.com', role: 'Editor', status: 'Active' },
-  { name: 'Emma Williams', email: 'emma@company.com', role: 'Viewer', status: 'Active' },
-];
-
 export function Settings() {
   const [activeTab, setActiveTab] = useState('account');
+  const [settings, setSettings] = useState<any>(null);
+  const [account, setAccount] = useState({
+    name: '',
+    email: '',
+    timezone: 'Asia/Kolkata',
+    language: 'English',
+  });
+
+  const loadSettings = async () => {
+    const data = (await api.settings()) as any;
+    setSettings(data);
+    setAccount({
+      name: data.account?.name || '',
+      email: data.account?.email || '',
+      timezone: data.account?.timezone || 'Asia/Kolkata',
+      language: data.account?.language || 'English',
+    });
+  };
+
+  useEffect(() => {
+    loadSettings().catch(() => setSettings(null));
+  }, []);
+
+  const integrations = settings?.integrations || [];
+  const teamMembers = settings?.team || [];
+  const domains = settings?.domains || [];
+  const billing = settings?.billing || {};
+  const notifications = settings?.notifications || [];
 
   return (
     <div className="p-8 space-y-6">
@@ -65,7 +80,8 @@ export function Settings() {
                     <label className="block text-sm text-muted-foreground mb-2">Full Name</label>
                     <input
                       type="text"
-                      defaultValue="John Doe"
+                      value={account.name}
+                      onChange={(e) => setAccount((prev) => ({ ...prev, name: e.target.value }))}
                       className="w-full px-4 py-2.5 bg-secondary border border-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                   </div>
@@ -73,29 +89,45 @@ export function Settings() {
                     <label className="block text-sm text-muted-foreground mb-2">Email Address</label>
                     <input
                       type="email"
-                      defaultValue="john@company.com"
+                      value={account.email}
+                      onChange={(e) => setAccount((prev) => ({ ...prev, email: e.target.value }))}
                       className="w-full px-4 py-2.5 bg-secondary border border-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm text-muted-foreground mb-2">Timezone</label>
-                      <select className="w-full px-4 py-2.5 bg-secondary border border-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary">
-                        <option>UTC-7 (Pacific)</option>
-                        <option>UTC-5 (Eastern)</option>
-                        <option>UTC+0 (GMT)</option>
+                      <select
+                        value={account.timezone}
+                        onChange={(e) => setAccount((prev) => ({ ...prev, timezone: e.target.value }))}
+                        className="w-full px-4 py-2.5 bg-secondary border border-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                      >
+                        <option value="Asia/Kolkata">Asia/Kolkata</option>
+                        <option value="UTC-7 (Pacific)">UTC-7 (Pacific)</option>
+                        <option value="UTC-5 (Eastern)">UTC-5 (Eastern)</option>
+                        <option value="UTC+0 (GMT)">UTC+0 (GMT)</option>
                       </select>
                     </div>
                     <div>
                       <label className="block text-sm text-muted-foreground mb-2">Language</label>
-                      <select className="w-full px-4 py-2.5 bg-secondary border border-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary">
+                      <select
+                        value={account.language}
+                        onChange={(e) => setAccount((prev) => ({ ...prev, language: e.target.value }))}
+                        className="w-full px-4 py-2.5 bg-secondary border border-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                      >
                         <option>English</option>
                         <option>Spanish</option>
                         <option>French</option>
                       </select>
                     </div>
                   </div>
-                  <button className="px-6 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg transition-colors">
+                  <button
+                    onClick={async () => {
+                      await api.updateSettings({ account });
+                      await loadSettings();
+                    }}
+                    className="px-6 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg transition-colors"
+                  >
                     Save Changes
                   </button>
                 </div>
@@ -107,16 +139,19 @@ export function Settings() {
             <div className="bg-card border border-border rounded-xl p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="font-[var(--font-display)] text-xl text-white">Sending Domains</h2>
-                <button className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg transition-colors">
+                <button
+                  onClick={async () => {
+                    await api.addDomain({ domain: `mail-${Date.now()}.example.com` });
+                    await loadSettings();
+                  }}
+                  className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg transition-colors"
+                >
                   Add Domain
                 </button>
               </div>
               <div className="space-y-3">
-                {[
-                  { domain: 'mail.company.com', dkim: true, spf: true },
-                  { domain: 'news.company.com', dkim: true, spf: false },
-                ].map((domain, index) => (
-                  <div key={index} className="p-4 bg-secondary/30 border border-border rounded-lg">
+                {domains.map((domain: any) => (
+                  <div key={domain.id} className="p-4 bg-secondary/30 border border-border rounded-lg">
                     <div className="flex items-center justify-between">
                       <div>
                         <div className="text-white mb-2">{domain.domain}</div>
@@ -139,7 +174,13 @@ export function Settings() {
                           </div>
                         </div>
                       </div>
-                      <button className="px-4 py-2 bg-card border border-border rounded-lg text-white hover:bg-secondary transition-colors">
+                      <button
+                        onClick={async () => {
+                          await api.verifyDomain(domain.id);
+                          await loadSettings();
+                        }}
+                        className="px-4 py-2 bg-card border border-border rounded-lg text-white hover:bg-secondary transition-colors"
+                      >
                         Verify
                       </button>
                     </div>
@@ -157,7 +198,9 @@ export function Settings() {
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="text-white mb-1">Production API Key</div>
-                      <div className="font-[var(--font-mono)] text-sm text-muted-foreground">trax_••••••••••••••••••••3x7k</div>
+                      <div className="font-[var(--font-mono)] text-sm text-muted-foreground">
+                        trax_••••••••••••••••••••3x7k
+                      </div>
                     </div>
                     <button className="px-4 py-2 bg-card border border-border rounded-lg text-white hover:bg-secondary transition-colors">
                       Reveal
@@ -172,11 +215,11 @@ export function Settings() {
               <div>
                 <h2 className="font-[var(--font-display)] text-xl text-white mb-4">Integrations</h2>
                 <div className="space-y-3">
-                  {integrations.map((integration, index) => (
-                    <div key={index} className="p-4 bg-secondary/30 border border-border rounded-lg">
+                  {integrations.map((integration: any) => (
+                    <div key={integration.id} className="p-4 bg-secondary/30 border border-border rounded-lg">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 ${integration.logo} rounded-lg`} />
+                          <div className="w-10 h-10 rounded-lg" style={{ backgroundColor: integration.color }} />
                           <div>
                             <div className="text-white">{integration.name}</div>
                             <div className="text-sm text-muted-foreground">{integration.description}</div>
@@ -208,8 +251,8 @@ export function Settings() {
                 </button>
               </div>
               <div className="space-y-3">
-                {teamMembers.map((member, index) => (
-                  <div key={index} className="p-4 bg-secondary/30 border border-border rounded-lg">
+                {teamMembers.map((member: any) => (
+                  <div key={member.id} className="p-4 bg-secondary/30 border border-border rounded-lg">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-[#8B5CF6] flex items-center justify-center text-white">
@@ -245,8 +288,10 @@ export function Settings() {
                 <div className="p-6 bg-gradient-to-br from-primary/10 to-[#8B5CF6]/10 border border-primary/20 rounded-xl">
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <div className="text-2xl font-[var(--font-display)] text-white mb-1">Pro Plan</div>
-                      <div className="text-muted-foreground">$99/month</div>
+                      <div className="text-2xl font-[var(--font-display)] text-white mb-1">{billing.plan || 'Pro Plan'}</div>
+                      <div className="text-muted-foreground">
+                        ${billing.price || 99}/{billing.period || 'month'}
+                      </div>
                     </div>
                     <button className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg transition-colors">
                       Upgrade
@@ -255,17 +300,37 @@ export function Settings() {
                   <div className="grid grid-cols-3 gap-4">
                     <div>
                       <div className="text-sm text-muted-foreground mb-1">Emails Sent</div>
-                      <div className="text-lg text-white">248,543 / 500,000</div>
+                      <div className="text-lg text-white">
+                        {(billing.sent || 0).toLocaleString()} / {(billing.limit || 0).toLocaleString()}
+                      </div>
                     </div>
                     <div>
                       <div className="text-sm text-muted-foreground mb-1">Contacts</div>
-                      <div className="text-lg text-white">54,300 / 100,000</div>
+                      <div className="text-lg text-white">{(settings?.team?.length || 0).toLocaleString()} team members</div>
                     </div>
                     <div>
-                      <div className="text-sm text-muted-foreground mb-1">Team Members</div>
-                      <div className="text-lg text-white">3 / 10</div>
+                      <div className="text-sm text-muted-foreground mb-1">Renewal</div>
+                      <div className="text-lg text-white">{billing.renewalDate || 'May 2026'}</div>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              <div>
+                <h2 className="font-[var(--font-display)] text-xl text-white mb-4">Invoice History</h2>
+                <div className="space-y-3">
+                  {(billing.invoices || []).map((invoice: any) => (
+                    <div key={invoice.id} className="p-4 bg-secondary/30 border border-border rounded-lg flex items-center justify-between">
+                      <div>
+                        <div className="text-white">{invoice.number}</div>
+                        <div className="text-sm text-muted-foreground">{invoice.date}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-white">${invoice.amount}</div>
+                        <div className="text-sm text-[#00D4AA]">{invoice.status}</div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -275,15 +340,8 @@ export function Settings() {
             <div className="bg-card border border-border rounded-xl p-6">
               <h2 className="font-[var(--font-display)] text-xl text-white mb-6">Notification Preferences</h2>
               <div className="space-y-4">
-                {[
-                  { label: 'Campaign sent successfully', enabled: true },
-                  { label: 'Campaign failed to send', enabled: true },
-                  { label: 'Daily performance summary', enabled: false },
-                  { label: 'Weekly reports', enabled: true },
-                  { label: 'New subscriber notifications', enabled: false },
-                  { label: 'Automation completed', enabled: true },
-                ].map((notification, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 bg-secondary/30 border border-border rounded-lg">
+                {notifications.map((notification: any) => (
+                  <div key={notification.id} className="flex items-center justify-between p-4 bg-secondary/30 border border-border rounded-lg">
                     <span className="text-white">{notification.label}</span>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input type="checkbox" defaultChecked={notification.enabled} className="sr-only peer" />

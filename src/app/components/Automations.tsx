@@ -1,56 +1,24 @@
 import { Plus, Play, Pause, Users, Mail, Clock, GitBranch } from 'lucide-react';
-
-const automations = [
-  {
-    id: '1',
-    name: 'Welcome Series',
-    status: 'Active',
-    trigger: 'Subscribed to list',
-    enrolled: 1245,
-    completed: 987,
-    conversionRate: 23.4,
-    nodes: 5,
-  },
-  {
-    id: '2',
-    name: 'Abandoned Cart Recovery',
-    status: 'Active',
-    trigger: 'Cart abandoned',
-    enrolled: 834,
-    completed: 412,
-    conversionRate: 18.7,
-    nodes: 4,
-  },
-  {
-    id: '3',
-    name: 'Re-engagement Campaign',
-    status: 'Paused',
-    trigger: 'No opens in 90 days',
-    enrolled: 2341,
-    completed: 1456,
-    conversionRate: 8.2,
-    nodes: 6,
-  },
-  {
-    id: '4',
-    name: 'Birthday Campaign',
-    status: 'Active',
-    trigger: 'Birthday date',
-    enrolled: 567,
-    completed: 534,
-    conversionRate: 31.2,
-    nodes: 3,
-  },
-];
-
-const templates = [
-  { name: 'Welcome Series', icon: Mail, description: '3-email onboarding sequence' },
-  { name: 'Abandoned Cart', icon: GitBranch, description: 'Recover lost sales automatically' },
-  { name: 'Re-engagement', icon: Clock, description: 'Win back inactive subscribers' },
-  { name: 'Drip Sequence', icon: Users, description: 'Nurture leads over time' },
-];
+import { useEffect, useState } from 'react';
+import { api } from '@/lib/api';
 
 export function Automations() {
+  const [automations, setAutomations] = useState<Array<any>>([]);
+  const [templates, setTemplates] = useState<Array<any>>([]);
+
+  const load = async () => {
+    const [automationData, templateData] = await Promise.all([api.automations(), api.templates()]);
+    setAutomations(automationData as Array<any>);
+    setTemplates(templateData as Array<any>);
+  };
+
+  useEffect(() => {
+    load().catch(() => {
+      setAutomations([]);
+      setTemplates([]);
+    });
+  }, []);
+
   return (
     <div className="p-8 space-y-6">
       <div className="flex items-center justify-between">
@@ -65,8 +33,8 @@ export function Automations() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        {templates.map((template, index) => {
-          const Icon = template.icon;
+        {templates.map((template: any, index) => {
+          const Icon = [Mail, GitBranch, Clock, Users][index % 4];
           return (
             <div
               key={index}
@@ -93,6 +61,11 @@ export function Automations() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4 flex-1">
                   <button
+                    onClick={async () => {
+                      const nextStatus = automation.status === 'Active' ? 'Paused' : 'Active';
+                      await api.updateAutomation(automation.id, { status: nextStatus });
+                      await load();
+                    }}
                     className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
                       automation.status === 'Active'
                         ? 'bg-[#00D4AA]/10 text-[#00D4AA] hover:bg-[#00D4AA]/20'

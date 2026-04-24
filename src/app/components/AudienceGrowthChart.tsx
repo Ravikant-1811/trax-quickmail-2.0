@@ -1,44 +1,7 @@
 import { useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-const data30 = [
-  { date: 'Mar 25', subscribers: 42000 },
-  { date: 'Mar 28', subscribers: 43200 },
-  { date: 'Apr 1', subscribers: 44500 },
-  { date: 'Apr 5', subscribers: 46800 },
-  { date: 'Apr 10', subscribers: 48200 },
-  { date: 'Apr 15', subscribers: 50100 },
-  { date: 'Apr 20', subscribers: 52400 },
-  { date: 'Apr 24', subscribers: 54300 },
-];
-
-const data60 = [
-  { date: 'Feb 24', subscribers: 35000 },
-  { date: 'Mar 5', subscribers: 37200 },
-  { date: 'Mar 15', subscribers: 39800 },
-  { date: 'Mar 25', subscribers: 42000 },
-  { date: 'Apr 5', subscribers: 46800 },
-  { date: 'Apr 15', subscribers: 50100 },
-  { date: 'Apr 24', subscribers: 54300 },
-];
-
-const data90 = [
-  { date: 'Jan 24', subscribers: 28000 },
-  { date: 'Feb 10', subscribers: 32000 },
-  { date: 'Feb 25', subscribers: 36500 },
-  { date: 'Mar 12', subscribers: 40200 },
-  { date: 'Mar 28', subscribers: 45000 },
-  { date: 'Apr 12', subscribers: 49800 },
-  { date: 'Apr 24', subscribers: 54300 },
-];
-
-const dataMap = {
-  '30': data30,
-  '60': data60,
-  '90': data90,
-};
-
-export function AudienceGrowthChart() {
+export function AudienceGrowthChart({ dataMap }: { dataMap: Record<'30' | '60' | '90', Array<{ date: string; subscribers: number }>> }) {
   const [period, setPeriod] = useState<'30' | '60' | '90'>('30');
 
   return (
@@ -101,12 +64,16 @@ export function AudienceGrowthChart() {
 
       <div className="mt-4 flex items-center gap-4">
         <div>
-          <div className="text-2xl font-[var(--font-display)] text-white">54,300</div>
+          <div className="text-2xl font-[var(--font-display)] text-white">
+            {dataMap[period][dataMap[period].length - 1]?.subscribers?.toLocaleString?.() ?? '0'}
+          </div>
           <div className="text-sm text-muted-foreground">Total Subscribers</div>
         </div>
         <div className="h-8 w-px bg-border" />
         <div>
-          <div className="text-lg text-[#00D4AA]">+12,300</div>
+          <div className="text-lg text-[#00D4AA]">
+            +{Math.max(0, (dataMap[period][dataMap[period].length - 1]?.subscribers || 0) - (dataMap[period][0]?.subscribers || 0)).toLocaleString()}
+          </div>
           <div className="text-sm text-muted-foreground">Last {period} days</div>
         </div>
       </div>

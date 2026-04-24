@@ -1,9 +1,32 @@
+import { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { KPICards } from './KPICards';
 import { RecentCampaigns } from './RecentCampaigns';
 import { AudienceGrowthChart } from './AudienceGrowthChart';
+import { api } from '@/lib/api';
 
 export function Dashboard() {
+  const [dashboard, setDashboard] = useState<any>(null);
+
+  useEffect(() => {
+    let active = true;
+    api.dashboard()
+      .then((data) => {
+        if (active) {
+          setDashboard(data);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setDashboard(null);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
     <div className="p-8 space-y-8">
       <div className="flex items-center justify-between">
@@ -13,11 +36,11 @@ export function Dashboard() {
         </div>
       </div>
 
-      <KPICards />
+      {dashboard && <KPICards items={dashboard.kpis} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <RecentCampaigns />
-        <AudienceGrowthChart />
+        <RecentCampaigns campaigns={dashboard?.recentCampaigns || []} />
+        <AudienceGrowthChart dataMap={dashboard?.audienceGrowth || { '30': [], '60': [], '90': [] }} />
       </div>
 
       <button

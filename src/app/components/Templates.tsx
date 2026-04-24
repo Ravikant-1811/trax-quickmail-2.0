@@ -1,104 +1,25 @@
 import { Plus, Search, Eye, Copy } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { api } from '@/lib/api';
 
 const categories = ['All', 'Welcome', 'Promotional', 'Transactional', 'Newsletter', 'Re-engagement', 'Event'];
-
-const templates = [
-  {
-    id: '1',
-    name: 'Welcome Email',
-    category: 'Welcome',
-    preview: 'A warm welcome message for new subscribers',
-    thumbnail: 'linear-gradient(135deg, #00D4AA 0%, #0EA5E9 100%)',
-  },
-  {
-    id: '2',
-    name: 'Product Launch',
-    category: 'Promotional',
-    preview: 'Announce your latest product with style',
-    thumbnail: 'linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)',
-  },
-  {
-    id: '3',
-    name: 'Order Confirmation',
-    category: 'Transactional',
-    preview: 'Professional order receipt and details',
-    thumbnail: 'linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%)',
-  },
-  {
-    id: '4',
-    name: 'Weekly Newsletter',
-    category: 'Newsletter',
-    preview: 'Clean newsletter layout with content blocks',
-    thumbnail: 'linear-gradient(135deg, #F59E0B 0%, #EF4444 100%)',
-  },
-  {
-    id: '5',
-    name: 'Flash Sale',
-    category: 'Promotional',
-    preview: 'Eye-catching sale announcement',
-    thumbnail: 'linear-gradient(135deg, #EF4444 0%, #F97316 100%)',
-  },
-  {
-    id: '6',
-    name: 'We Miss You',
-    category: 'Re-engagement',
-    preview: 'Win back inactive subscribers',
-    thumbnail: 'linear-gradient(135deg, #06B6D4 0%, #3B82F6 100%)',
-  },
-  {
-    id: '7',
-    name: 'Event Invitation',
-    category: 'Event',
-    preview: 'Elegant event invitation template',
-    thumbnail: 'linear-gradient(135deg, #A855F7 0%, #EC4899 100%)',
-  },
-  {
-    id: '8',
-    name: 'Password Reset',
-    category: 'Transactional',
-    preview: 'Simple and secure password reset',
-    thumbnail: 'linear-gradient(135deg, #64748B 0%, #475569 100%)',
-  },
-  {
-    id: '9',
-    name: 'Customer Feedback',
-    category: 'Newsletter',
-    preview: 'Request reviews and testimonials',
-    thumbnail: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
-  },
-  {
-    id: '10',
-    name: 'Cart Abandonment',
-    category: 'Promotional',
-    preview: 'Recover abandoned shopping carts',
-    thumbnail: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
-  },
-  {
-    id: '11',
-    name: 'Webinar Reminder',
-    category: 'Event',
-    preview: 'Remind attendees about upcoming webinars',
-    thumbnail: 'linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%)',
-  },
-  {
-    id: '12',
-    name: 'Thank You',
-    category: 'Welcome',
-    preview: 'Express gratitude to your customers',
-    thumbnail: 'linear-gradient(135deg, #EC4899 0%, #DB2777 100%)',
-  },
-];
 
 export function Templates() {
   const [activeCategory, setActiveCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [templates, setTemplates] = useState<Array<any>>([]);
 
-  const filteredTemplates = templates.filter((template) => {
+  useEffect(() => {
+    api.templates()
+      .then((data) => setTemplates(data as Array<any>))
+      .catch(() => setTemplates([]));
+  }, []);
+
+  const filteredTemplates = useMemo(() => templates.filter((template) => {
     const matchesCategory = activeCategory === 'All' || template.category === activeCategory;
     const matchesSearch = template.name.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
-  });
+  }), [activeCategory, searchQuery, templates]);
 
   return (
     <div className="p-8 space-y-6">

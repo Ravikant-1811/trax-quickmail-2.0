@@ -1,48 +1,5 @@
 import { MoreVertical } from 'lucide-react';
 
-const campaigns = [
-  {
-    name: 'Spring Product Launch',
-    status: 'Sent',
-    sent: '45,230',
-    openRate: '38.2%',
-    clickRate: '9.1%',
-    date: 'Apr 20, 2026',
-  },
-  {
-    name: 'Weekly Newsletter #247',
-    status: 'Scheduled',
-    sent: '0',
-    openRate: '-',
-    clickRate: '-',
-    date: 'Apr 26, 2026',
-  },
-  {
-    name: 'Re-engagement Campaign',
-    status: 'Draft',
-    sent: '0',
-    openRate: '-',
-    clickRate: '-',
-    date: '-',
-  },
-  {
-    name: 'Customer Feedback Survey',
-    status: 'Sent',
-    sent: '18,450',
-    openRate: '42.5%',
-    clickRate: '15.3%',
-    date: 'Apr 18, 2026',
-  },
-  {
-    name: 'Flash Sale Alert',
-    status: 'Paused',
-    sent: '12,100',
-    openRate: '28.7%',
-    clickRate: '6.2%',
-    date: 'Apr 15, 2026',
-  },
-];
-
 const statusColors = {
   Sent: 'bg-[#00D4AA]/10 text-[#00D4AA] border-[#00D4AA]/20',
   Scheduled: 'bg-[#3B82F6]/10 text-[#3B82F6] border-[#3B82F6]/20',
@@ -50,7 +7,7 @@ const statusColors = {
   Paused: 'bg-[#F5A623]/10 text-[#F5A623] border-[#F5A623]/20',
 };
 
-export function RecentCampaigns() {
+export function RecentCampaigns({ campaigns }: { campaigns: Array<Record<string, unknown>> }) {
   return (
     <div className="bg-card border border-border rounded-xl p-6">
       <div className="flex items-center justify-between mb-6">
@@ -71,7 +28,7 @@ export function RecentCampaigns() {
             </tr>
           </thead>
           <tbody>
-            {campaigns.map((campaign, index) => (
+            {campaigns.map((campaign: any, index) => (
               <tr
                 key={index}
                 className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors"

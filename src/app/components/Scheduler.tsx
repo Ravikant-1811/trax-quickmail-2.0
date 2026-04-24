@@ -1,44 +1,6 @@
 import { ChevronLeft, ChevronRight, Clock, Users, Sparkles } from 'lucide-react';
-import { useState } from 'react';
-
-const scheduledCampaigns = [
-  {
-    id: '1',
-    name: 'Weekly Newsletter #247',
-    time: '09:00 AM',
-    date: 'Apr 26, 2026',
-    segment: 'Newsletter Subscribers',
-    count: 32450,
-    color: 'bg-[#00D4AA]',
-  },
-  {
-    id: '2',
-    name: 'Product Update',
-    time: '02:00 PM',
-    date: 'Apr 27, 2026',
-    segment: 'All Active Users',
-    count: 48230,
-    color: 'bg-[#8B5CF6]',
-  },
-  {
-    id: '3',
-    name: 'Flash Sale Reminder',
-    time: '10:30 AM',
-    date: 'Apr 28, 2026',
-    segment: 'High Engagement',
-    count: 12100,
-    color: 'bg-[#F5A623]',
-  },
-  {
-    id: '4',
-    name: 'Monthly Roundup',
-    time: '08:00 AM',
-    date: 'May 1, 2026',
-    segment: 'All Subscribers',
-    count: 54300,
-    color: 'bg-[#3B82F6]',
-  },
-];
+import { useEffect, useState } from 'react';
+import { api } from '@/lib/api';
 
 const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const calendarDays = [
@@ -68,19 +30,26 @@ const calendarDays = [
   { day: 21, month: 'current', events: [] },
   { day: 22, month: 'current', events: [] },
   { day: 23, month: 'current', events: [] },
-  { day: 24, month: 'current', events: [{ name: 'Today', color: 'bg-primary' }] },
+  { day: 24, month: 'current', events: [{ name: 'Today', color: '#00D4AA' }] },
   { day: 25, month: 'current', events: [] },
-  { day: 26, month: 'current', events: [{ name: 'Weekly Newsletter', color: 'bg-[#00D4AA]' }] },
-  { day: 27, month: 'current', events: [{ name: 'Product Update', color: 'bg-[#8B5CF6]' }] },
-  { day: 28, month: 'current', events: [{ name: 'Flash Sale', color: 'bg-[#F5A623]' }] },
+  { day: 26, month: 'current', events: [{ name: 'Weekly Newsletter', color: '#00D4AA' }] },
+  { day: 27, month: 'current', events: [{ name: 'Product Update', color: '#8B5CF6' }] },
+  { day: 28, month: 'current', events: [{ name: 'Flash Sale', color: '#F5A623' }] },
   { day: 29, month: 'current', events: [] },
   { day: 30, month: 'current', events: [] },
-  { day: 1, month: 'next', events: [{ name: 'Monthly Roundup', color: 'bg-[#3B82F6]' }] },
+  { day: 1, month: 'next', events: [{ name: 'Monthly Roundup', color: '#3B82F6' }] },
   { day: 2, month: 'next', events: [] },
 ];
 
 export function Scheduler() {
   const [view, setView] = useState<'month' | 'week' | 'day'>('month');
+  const [scheduler, setScheduler] = useState<any>(null);
+
+  useEffect(() => {
+    api.scheduler()
+      .then((data) => setScheduler(data))
+      .catch(() => setScheduler(null));
+  }, []);
 
   return (
     <div className="p-8 space-y-6">
@@ -90,9 +59,9 @@ export function Scheduler() {
           <p className="text-muted-foreground">Plan and schedule your campaigns</p>
         </div>
         <div className="flex gap-2">
-          <button className="px-4 py-2 bg-card border border-border rounded-lg text-muted-foreground hover:text-white transition-colors">
-            UTC-7 (Pacific)
-          </button>
+            <button className="px-4 py-2 bg-card border border-border rounded-lg text-muted-foreground hover:text-white transition-colors">
+            {scheduler?.timezone || 'UTC-7 (Pacific)'}
+            </button>
         </div>
       </div>
 
@@ -155,10 +124,11 @@ export function Scheduler() {
                 >
                   {dayData.day}
                 </div>
-                {dayData.events.map((event, eventIndex) => (
+                {dayData.events.map((event: any, eventIndex: number) => (
                   <div
                     key={eventIndex}
-                    className={`${event.color} text-white text-xs px-1 py-0.5 rounded mt-1 truncate`}
+                    className="text-white text-xs px-1 py-0.5 rounded mt-1 truncate"
+                    style={{ backgroundColor: event.color }}
                   >
                     {event.name}
                   </div>
@@ -172,13 +142,13 @@ export function Scheduler() {
           <div className="bg-card border border-border rounded-xl p-6">
             <h3 className="font-[var(--font-display)] text-lg text-white mb-4">Upcoming Sends</h3>
             <div className="space-y-3">
-              {scheduledCampaigns.map((campaign) => (
+              {(scheduler?.events || []).map((campaign: any) => (
                 <div
                   key={campaign.id}
                   className="p-3 bg-secondary/30 border border-border rounded-lg hover:border-primary/50 transition-colors cursor-pointer"
                 >
                   <div className="flex items-start gap-3">
-                    <div className={`w-1 h-full ${campaign.color} rounded-full`} />
+                    <div className="w-1 h-full rounded-full" style={{ backgroundColor: campaign.color }} />
                     <div className="flex-1">
                       <div className="text-white text-sm mb-1">{campaign.name}</div>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
@@ -209,14 +179,12 @@ export function Scheduler() {
               Based on your audience engagement patterns, we recommend:
             </p>
             <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-white">Tuesday</span>
-                <span className="text-primary">9:00 AM - 11:00 AM</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-white">Thursday</span>
-                <span className="text-primary">2:00 PM - 4:00 PM</span>
-              </div>
+              {(scheduler?.bestTime || []).map((item: any) => (
+                <div key={item.day} className="flex items-center justify-between text-sm">
+                  <span className="text-white">{item.day}</span>
+                  <span className="text-primary">{item.time}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
